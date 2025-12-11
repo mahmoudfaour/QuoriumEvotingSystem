@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>E-Voting – Admin</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="wrap">
+  <h1>E-Voting <span class="badge">Admin</span></h1>
+  <div class="nav">
+    <a href="index.html">Login</a>
+    <a href="elections.html">Elections</a>
+    <a href="vote.html">Vote</a>
+    <a href="results.html">Results</a>
+    <a class="active" href="admin.html">Admin</a>
+  </div>
+
+  <!-- API bases -->
+  <div class="card">
+    <h2>API Bases</h2>
+    <div class="grid2">
+      <div>
+        <label>Auth API Base</label>
+        <input id="authBase" placeholder="http://localhost:4000" />
+      </div>
+      <div>
+        <label>Results API Base</label>
+        <input id="resultsBase" placeholder="http://localhost:7000" />
+      </div>
+    </div>
+    <button id="btnSaveBases">Save</button>
+  </div>
+
+  <!-- Admin login -->
+  <div class="card">
+    <h2>Admin Login</h2>
+    <div class="grid2">
+      <div>
+        <label>Email</label>
+        <input id="adminEmail" value="admin@uni.com" />
+      </div>
+      <div>
+        <label>Password</label>
+        <input id="adminPass" type="password" placeholder="••••••••" />
+      </div>
+    </div>
+    <div class="grid2">
+      <button id="btnAdminLogin">Login as Admin</button>
+      <button id="btnLogout" class="secondary">Logout</button>
+    </div>
+    <div class="hr"></div>
+    <div class="muted small">Status: <span id="loginStatus">Not logged in</span></div>
+    <pre id="loginRaw" class="mt"></pre>
+  </div>
+
+  <!-- Admin panels (hidden until role=admin) -->
+  <div id="adminPanels" style="display:none">
+    <!-- Users -->
+    <div class="card">
+      <h2>Users</h2>
+      <div class="grid2">
+        <div>
+          <label>Create / Upsert User</label>
+          <input id="uName" placeholder="Full name" />
+          <input id="uEmail" placeholder="email@uni.com" />
+          <input id="uPass" type="password" placeholder="password" />
+          <select id="uRole">
+            <option value="voter">voter</option>
+            <option value="admin">admin</option>
+          </select>
+          <button id="btnCreateUser">Create / Update</button>
+        </div>
+        <div>
+          <label>Delete User (ID)</label>
+          <input id="uDelId" placeholder="user id" />
+          <button id="btnDeleteUser" class="secondary">Delete</button>
+        </div>
+      </div>
+      <div class="hr"></div>
+      <div class="list" id="usersBox"><div class="muted">No data…</div></div>
+    </div>
+
+    <!-- Elections -->
+    <div class="card">
+      <h2>Elections</h2>
+      <div class="grid2">
+        <div>
+          <label>Create Election</label>
+          <input id="eTitle" placeholder="Title" />
+          <input id="eDesc" placeholder="Description (optional)" />
+          <input id="eStart" type="datetime-local" />
+          <input id="eEnd" type="datetime-local" />
+          <label><input type="checkbox" id="eActive" checked /> Active</label>
+          <button id="btnCreateElection">Create</button>
+        </div>
+        <div>
+          <label>Delete Election (ID)</label>
+          <input id="eDelId" placeholder="election id" />
+          <button id="btnDeleteElection" class="secondary">Delete</button>
+        </div>
+      </div>
+      <div class="hr"></div>
+      <div class="list" id="electionsBox"><div class="muted">No data…</div></div>
+    </div>
+
+    <!-- Candidates -->
+    <div class="card">
+      <h2>Candidates</h2>
+      <div class="grid2">
+        <div>
+          <label>Add Candidate</label>
+          <input id="cElectionId" placeholder="election id" />
+          <input id="cName" placeholder="Candidate name" />
+          <input id="cDesc" placeholder="Description (optional)" />
+          <button id="btnAddCandidate">Add</button>
+        </div>
+        <div>
+          <label>Delete Candidate (ID)</label>
+          <input id="cDelId" placeholder="candidate id" />
+          <button id="btnDeleteCandidate" class="secondary">Delete</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Eligibility -->
+    <div class="card">
+      <h2>Eligibility</h2>
+      <div class="grid2">
+        <div>
+          <label>Grant Eligibility</label>
+          <input id="elElection" placeholder="election id" />
+          <input id="elUser" placeholder="user id" />
+          <button id="btnGrantEl">Grant</button>
+        </div>
+        <div>
+          <label>Revoke Eligibility</label>
+          <input id="elElection2" placeholder="election id" />
+          <input id="elUser2" placeholder="user id" />
+          <button id="btnRevokeEl" class="secondary">Revoke</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="utils.js"></script>
+<script>
+window.addEventListener('DOMContentLoaded', () => {
+  // bases
+  const authBaseEl = document.getElementById('authBase');
+  const resultsBaseEl = document.getElementById('resultsBase');
+  authBaseEl.value = cfg.authBase;
+  resultsBaseEl.value = cfg.resultsBase;
+  document.getElementById('btnSaveBases').onclick = () => {
+    setBases(authBaseEl.value, resultsBaseEl.value);
+    toast('Bases saved', 'ok');
+  };
+
+  // login widgets
+  const adminEmail = document.getElementById('adminEmail');
+  const adminPass  = document.getElementById('adminPass');
+  const loginStatus= document.getElementById('loginStatus');
+  const loginRaw   = document.getElementById('loginRaw');
+  const adminPanels= document.getElementById('adminPanels');
+
+  const setLoggedOut = () => {
+    loginStatus.textContent = 'Not logged in';
+    adminPanels.style.display = 'none';
+    loginRaw.textContent = '';
+  };
+
+  const setLoggedIn = (user) => {
+    loginStatus.textContent = `Logged in as ${user.full_name} (${user.role})`;
+    if (user.role === 'admin') {
+      adminPanels.style.display = '';
+      loadUsers();
+      loadElections();
+    } else {
+      adminPanels.style.display = 'none';
+      toast('You are logged in but not admin.', 'warn');
+    }
+  };
+
+  document.getElementById('btnAdminLogin').onclick = async () => {
+    try {
+      progressStart();
+      const out = await apiPost(cfg.authBase, '/auth/login', {
+        email: adminEmail.value.trim(),
+        password: adminPass.value
+      });
+      cfg.jwt = out.token; saveCfg();
+      loginRaw.textContent = JSON.stringify(out, null, 2);
+      setLoggedIn(out.user);
+      toast('Admin login OK', 'ok');
+    } catch (e) {
+      loginRaw.textContent = e.message;
+      setLoggedOut();
+      toast('Invalid credentials', 'err');
+    } finally {
+      progressDone();
+    }
+  };
+
+  document.getElementById('btnLogout').onclick = () => {
+    cfg.jwt = ''; saveCfg();
+    setLoggedOut();
+    toast('Logged out', 'ok');
+  };
+
+  // ---------- Users ----------
+  async function loadUsers() {
+    try {
+      const rows = await apiGet(cfg.authBase, '/admin/users', true);
+      const box = document.getElementById('usersBox');
+      box.innerHTML = '';
+      rows.forEach(u => {
+        const div = document.createElement('div');
+        div.className = 'flex';
+        div.innerHTML = `<div style="flex:1"><b>#${u.id}</b> ${u.full_name} <span class="pill">${u.role}</span><div class="small muted">${u.email}</div></div>`;
+        box.appendChild(div);
+      });
+      if (!rows.length) box.innerHTML = '<div class="muted">No users</div>';
+    } catch (e) { toast('Load users failed', 'err'); }
+  }
+
+  document.getElementById('btnCreateUser').onclick = async () => {
+    const full_name = document.getElementById('uName').value.trim();
+    const email     = document.getElementById('uEmail').value.trim();
+    const password  = document.getElementById('uPass').value;
+    const role      = document.getElementById('uRole').value;
+    if (!full_name || !email || !password) return toast('Fill name/email/password', 'warn');
+    try {
+      progressStart();
+      await apiPost(cfg.authBase, '/admin/users', { full_name, email, password, role }, true);
+      await loadUsers();
+      toast('User saved', 'ok');
+    } catch (e) { toast('Save user failed', 'err'); }
+    finally { progressDone(); }
+  };
+
+  document.getElementById('btnDeleteUser').onclick = async () => {
+    const id = Number(document.getElementById('uDelId').value || 0);
+    if (!id) return toast('Enter user id', 'warn');
+    try {
+      progressStart();
+      await apiPost(cfg.authBase, `/admin/users/${id}`, {}, true); // will 405; use fetch DELETE
+    } catch {}
+    try {
+      await fetch(`${cfg.authBase}/admin/users/${id}`, {
+        method:'DELETE',
+        headers: { Authorization: 'Bearer ' + cfg.jwt }
+      }).then(r=>{ if(!r.ok) throw new Error('delete failed') });
+      await loadUsers();
+      toast('User deleted', 'ok');
+    } catch (e) { toast('Delete user failed', 'err'); }
+    finally { progressDone(); }
+  };
+
+  // ---------- Elections ----------
+  async function loadElections() {
+    try {
+      const rows = await apiGet(cfg.authBase, '/admin/elections', true);
+      const box = document.getElementById('electionsBox');
+      box.innerHTML = '';
+      rows.forEach(e => {
+        const div = document.createElement('div');
+        div.className = 'flex';
+        div.innerHTML =
+          `<div style="flex:1"><b>#${e.id}</b> ${e.title} ` +
+          `<span class="pill">${e.is_active ? 'active' : 'closed'}</span>` +
+          `<div class="small muted">${new Date(e.start_time).toLocaleString()} → ${new Date(e.end_time).toLocaleString()}</div></div>`;
+        box.appendChild(div);
+      });
+      if (!rows.length) box.innerHTML = '<div class="muted">No elections</div>';
+    } catch (e) { toast('Load elections failed', 'err'); }
+  }
+
+  document.getElementById('btnCreateElection').onclick = async () => {
+    const title = document.getElementById('eTitle').value.trim();
+    const description = document.getElementById('eDesc').value.trim();
+    const start_time = document.getElementById('eStart').value;
+    const end_time   = document.getElementById('eEnd').value;
+    const is_active  = document.getElementById('eActive').checked;
+    if (!title || !start_time || !end_time) return toast('Fill title/start/end', 'warn');
+    try {
+      progressStart();
+      await apiPost(cfg.authBase, '/admin/elections', { title, description, start_time, end_time, is_active }, true);
+      await loadElections();
+      toast('Election created', 'ok');
+    } catch (e) { toast('Create election failed', 'err'); }
+    finally { progressDone(); }
+  };
+
+  document.getElementById('btnDeleteElection').onclick = async () => {
+    const id = Number(document.getElementById('eDelId').value || 0);
+    if (!id) return toast('Enter election id', 'warn');
+    try {
+      progressStart();
+      await fetch(`${cfg.authBase}/admin/elections/${id}`, {
+        method:'DELETE',
+        headers: { Authorization: 'Bearer ' + cfg.jwt }
+      }).then(r=>{ if(!r.ok) throw new Error('delete failed') });
+      await loadElections();
+      toast('Election deleted', 'ok');
+    } catch (e) { toast('Delete election failed', 'err'); }
+    finally { progressDone(); }
+  };
+
+  // ---------- Candidates ----------
+  document.getElementById('btnAddCandidate').onclick = async () => {
+    const election_id = Number(document.getElementById('cElectionId').value || 0);
+    const name = document.getElementById('cName').value.trim();
+    const description = document.getElementById('cDesc').value.trim();
+    if (!election_id || !name) return toast('Fill election id & name', 'warn');
+    try {
+      progressStart();
+      await apiPost(cfg.authBase, '/admin/candidates', { election_id, name, description }, true);
+      toast('Candidate added', 'ok');
+    } catch (e) { toast('Add candidate failed', 'err'); }
+    finally { progressDone(); }
+  };
+
+  document.getElementById('btnDeleteCandidate').onclick = async () => {
+    const id = Number(document.getElementById('cDelId').value || 0);
+    if (!id) return toast('Enter candidate id', 'warn');
+    try {
+      progressStart();
+      await fetch(`${cfg.authBase}/admin/candidates/${id}`, {
+        method:'DELETE',
+        headers: { Authorization: 'Bearer ' + cfg.jwt }
+      }).then(r=>{ if(!r.ok) throw new Error('delete failed') });
+      toast('Candidate deleted', 'ok');
+    } catch (e) { toast('Delete candidate failed', 'err'); }
+    finally { progressDone(); }
+  };
+
+  // ---------- Eligibility ----------
+  document.getElementById('btnGrantEl').onclick = async () => {
+    const election_id = Number(document.getElementById('elElection').value || 0);
+    const user_id = Number(document.getElementById('elUser').value || 0);
+    if (!election_id || !user_id) return toast('Enter election & user id', 'warn');
+    try {
+      progressStart();
+      await apiPost(cfg.authBase, '/admin/eligibility', { election_id, user_id }, true);
+      toast('Eligibility granted', 'ok');
+    } catch (e) { toast('Grant failed', 'err'); }
+    finally { progressDone(); }
+  };
+
+  document.getElementById('btnRevokeEl').onclick = async () => {
+    const election_id = Number(document.getElementById('elElection2').value || 0);
+    const user_id = Number(document.getElementById('elUser2').value || 0);
+    if (!election_id || !user_id) return toast('Enter election & user id', 'warn');
+    try {
+      progressStart();
+      await fetch(`${cfg.authBase}/admin/eligibility`, {
+        method:'DELETE',
+        headers: {
+          'Content-Type':'application/json',
+          Authorization: 'Bearer ' + cfg.jwt
+        },
+        body: JSON.stringify({ election_id, user_id })
+      }).then(r=>{ if(!r.ok) throw new Error('revoke failed') });
+      toast('Eligibility revoked', 'ok');
+    } catch (e) { toast('Revoke failed', 'err'); }
+    finally { progressDone(); }
+  };
+
+  // If you already have a token in localStorage, try to fetch /admin/users on load:
+  (async function tryAuto() {
+    if (!cfg.jwt) return;
+    try {
+      const me = await apiPost(cfg.authBase, '/auth/login', { email:'', password:'' }); // placeholder; we don't have /me
+    } catch {}
+  })();
+});
+</script>
+</body>
+</html>

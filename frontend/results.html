@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>E-Voting – Results</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="wrap">
+  <h1>E-Voting <span class="badge">Results</span></h1>
+  <div class="nav">
+    <a href="index.html">Login</a>
+    <a href="elections.html">Elections</a>
+    <a href="vote.html">Vote</a>
+    <a class="active" href="results.html">Results</a>
+  </div>
+
+  <div class="card">
+    <h2>Election</h2>
+    <div class="grid2">
+      <div>
+        <label>Election ID</label>
+        <input id="eid" />
+      </div>
+      <div>
+        <label>&nbsp;</label>
+        <div class="flex">
+          <button id="btnRefresh">Refresh</button>
+          <button id="btnAuto" class="ml">Auto: OFF</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Live Tally</h2>
+    <div id="box" class="list"><div class="muted">No data yet…</div></div>
+  </div>
+
+  <div class="card">
+    <h2>Raw</h2>
+    <pre id="raw" class="mt"></pre>
+  </div>
+</div>
+
+<script src="utils.js"></script>
+<script>
+window.addEventListener('DOMContentLoaded', () => {
+  const eidEl = document.getElementById('eid');
+  const box   = document.getElementById('box');
+  const raw   = document.getElementById('raw');
+  const btnRefresh = document.getElementById('btnRefresh');
+  const btnAuto    = document.getElementById('btnAuto');
+
+  if (!eidEl || !box || !raw || !btnRefresh || !btnAuto) {
+    console.error('Missing elements on results.html. Check IDs.');
+    return;
+  }
+
+  eidEl.value = cfg.electionId || 1;
+  let timer = null;
+
+  function render(r) {
+    box.innerHTML = '';
+    (r.candidates || []).forEach(c => {
+      const row = document.createElement('div');
+      row.className = 'flex';
+      row.innerHTML =
+        `<div style="flex:1"><b>${c.name}</b> <span class="pill">#${c.id}</span></div>` +
+        `<div class="kbd">votes: ${c.votes}</div>`;
+      box.appendChild(row);
+    });
+    raw.textContent = JSON.stringify(r, null, 2);
+  }
+
+  async function refresh() {
+    try {
+      progressStart();
+      cfg.electionId = Number(eidEl.value || 1);
+      saveCfg();
+      const r = await apiGet(cfg.resultsBase, `/results/${cfg.electionId}`);
+      render(r);
+    } catch (e) {
+      raw.textContent = e.message;
+      toast('Failed to fetch results', 'err');
+    } finally {
+      progressDone();
+    }
+  }
+
+  btnRefresh.onclick = refresh;
+  btnAuto.onclick = () => {
+    if (timer) {
+      clearInterval(timer);
+      timer = null;
+      btnAuto.textContent = 'Auto: OFF';
+      toast('Auto-refresh OFF','warn');
+    } else {
+      timer = setInterval(refresh, 1500);
+      btnAuto.textContent = 'Auto: ON';
+      toast('Auto-refresh ON','ok');
+    }
+  };
+
+  // initial load
+  refresh();
+});
+</script>
+</body>
+</html>

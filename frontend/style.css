@@ -1,0 +1,43 @@
+:root { --bg:#0f1222; --card:#171a2b; --muted:#98a2b3; --ok:#12b886; --warn:#f59f00; --err:#f03e3e; --fg:#e6e9f2; --accent:#4c6ef5; }
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,Segoe UI,Roboto,Ubuntu,sans-serif}
+.wrap{max-width:960px;margin:40px auto;padding:0 16px}
+h1{font-size:24px;margin:0 0 16px}
+h2{margin:0 0 12px}
+.card{background:var(--card);border-radius:16px;padding:16px;border:1px solid #21243a;box-shadow:0 4px 24px rgba(0,0,0,.25);margin-bottom:16px}
+label{display:block;font-weight:600;margin:8px 0 4px}
+input,select,button{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #2a2e4a;background:#0f1327;color:var(--fg)}
+button{cursor:pointer;font-weight:700;background:var(--accent);border-color:transparent}
+button.secondary{background:#2b2f55}
+button:disabled{opacity:.6;cursor:not-allowed}
+.nav{display:flex;gap:8px;margin-bottom:16px}
+.nav a{padding:8px 12px;border:1px solid #2a2e4a;border-radius:10px;background:#0f1327;color:var(--fg);text-decoration:none}
+.nav a.active{background:var(--accent)}
+.muted{color:var(--muted)}
+.small{font-size:12px}
+.kbd{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace; font-size:12px; background:#090b18; border:1px solid #1b2040; padding:3px 6px; border-radius:6px}
+.pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#23274b;font-size:12px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.flex{display:flex;gap:8px;align-items:center}
+.list{display:grid;gap:8px}
+.hr{height:1px;background:#23274b;margin:12px 0}
+.badge{padding:2px 6px;border-radius:6px;background:#0d1333;border:1px solid #283060;font-size:11px}
+/* --- Toasts --- */
+.toast {
+  position: fixed; right: 16px; bottom: 16px;
+  background:#11162d; border:1px solid #2b3260; color:#e6e9f2;
+  padding:10px 14px; border-radius:10px; box-shadow:0 8px 30px rgba(0,0,0,.35);
+  z-index: 9999; min-width: 260px; max-width: 420px; opacity: 0; transform: translateY(10px);
+  transition: opacity .2s ease, transform .2s ease;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+.toast.ok { border-color:#146c43; }
+.toast.warn { border-color:#f59f00; }
+.toast.err { border-color:#f03e3e; }
+
+/* --- Top progress bar --- */
+.progressbar {
+  position: fixed; top:0; left:0; height:3px; width:0; background:#4c6ef5; z-index:9998;
+  box-shadow: 0 0 6px rgba(76,110,245,.8);
+  transition: width .3s ease;
+}

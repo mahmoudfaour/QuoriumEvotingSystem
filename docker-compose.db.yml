@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16
+    container_name: evoting-db
+    environment:
+      POSTGRES_DB: e_voting
+      POSTGRES_USER: evoting_user
+      POSTGRES_PASSWORD: evoting_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - evoting_db_data:/var/lib/postgresql/data
+
+volumes:
+  evoting_db_data:

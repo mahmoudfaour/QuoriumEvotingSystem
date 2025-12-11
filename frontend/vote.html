@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>E-Voting – Vote</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="wrap">
+  <h1>E-Voting <span class="badge">Vote</span></h1>
+  <div class="nav">
+    <a href="index.html">Login</a>
+    <a href="elections.html">Elections</a>
+    <a class="active" href="vote.html">Vote</a>
+    <a href="results.html">Results</a>
+  </div>
+
+  <div class="card">
+    <h2>Selected</h2>
+    <div id="info" class="muted">Loading…</div>
+  </div>
+
+  <div class="card">
+    <h2>Submit Vote</h2>
+    <button id="btnVote">Vote</button>
+    <pre id="out" class="mt"></pre>
+  </div>
+</div>
+
+<script src="utils.js"></script>
+<script>
+window.addEventListener('DOMContentLoaded', () => {
+  requireToken(); requireElection();
+
+  const infoEl = document.getElementById('info');
+  const outEl  = document.getElementById('out');
+  const btn    = document.getElementById('btnVote');
+
+  if (!infoEl || !outEl || !btn) {
+    console.error('Missing #info, #out, or #btnVote in vote.html');
+    return;
+  }
+
+  // If no candidate picked, send user back to Elections
+  if (!cfg.candidateId || cfg.candidateId === 0) {
+    toast('Pick a candidate first.', 'warn');
+    return go('elections.html');
+  }
+
+  infoEl.textContent = `Election ID: ${cfg.electionId}, Candidate ID: ${cfg.candidateId}`;
+
+  async function doVote() {
+    try {
+      progressStart();
+      const resp = await apiPost(
+        cfg.authBase,
+        `/elections/${cfg.electionId}/vote`,
+        { candidateId: cfg.candidateId },
+        true
+      );
+      outEl.textContent = JSON.stringify(resp, null, 2);
+      toast('Vote submitted! Redirecting to results…', 'ok');
+      setTimeout(() => go('results.html'), 800);
+    } catch (e) {
+      outEl.textContent = e.message;
+      toast('Vote failed. Check eligibility or local status.', 'err');
+    } finally {
+      progressDone();
+    }
+  }
+
+  btn.onclick = doVote;
+
+  // Optional: auto-vote after 2s
+  toast('Auto-submitting your vote in 2s… Click Vote to submit now.', 'warn', 2000);
+  setTimeout(doVote, 2000);
+});
+</script>
+</body>
+</html>
